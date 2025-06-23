@@ -4,52 +4,50 @@ import io
 
 app = Flask(__name__)
 
-# HTML Template with Dark Theme
+# HTML Template
 html_template = '''
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <title>Resume Builder</title>
     <style>
         body {
             background-color: #121212;
             color: #ffffff;
             font-family: Arial, sans-serif;
-            margin: 40px;
+            padding: 20px;
         }
         h1 {
-            text-align: center;
             color: #00ffe7;
+            text-align: center;
         }
         form {
-            max-width: 600px;
-            margin: auto;
-            background: #1e1e1e;
+            background-color: #1e1e1e;
             padding: 20px;
             border-radius: 10px;
+            max-width: 600px;
+            margin: auto;
         }
-        label {
+        label, input, textarea {
             display: block;
-            margin-top: 10px;
+            width: 100%;
+            margin-bottom: 10px;
         }
         input, textarea {
-            width: 100%;
-            padding: 8px;
-            margin-top: 4px;
-            background: #2a2a2a;
-            color: #ffffff;
+            background-color: #2a2a2a;
+            color: white;
+            padding: 10px;
             border: 1px solid #444;
             border-radius: 5px;
         }
         button {
             background-color: #00ffe7;
             color: #000;
-            padding: 10px 15px;
-            margin-top: 15px;
+            padding: 10px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            width: 100%;
         }
         button:hover {
             background-color: #00c8b9;
@@ -58,32 +56,32 @@ html_template = '''
 </head>
 <body>
     <h1>Resume Builder</h1>
-    <form action="/generate" method="POST">
-        <label for="name">Full Name:</label>
+    <form method="POST" action="/generate">
+        <label>Full Name:</label>
         <input type="text" name="name" required>
 
-        <label for="email">Email:</label>
+        <label>Email:</label>
         <input type="email" name="email" required>
 
-        <label for="phone">Phone:</label>
+        <label>Phone:</label>
         <input type="text" name="phone" required>
 
-        <label for="address">Address:</label>
+        <label>Address:</label>
         <input type="text" name="address" required>
 
-        <label for="linkedin">LinkedIn:</label>
+        <label>LinkedIn:</label>
         <input type="text" name="linkedin" required>
 
-        <label for="github">GitHub:</label>
+        <label>GitHub:</label>
         <input type="text" name="github" required>
 
-        <label for="summary">Professional Summary:</label>
+        <label>Summary:</label>
         <textarea name="summary" rows="4" required></textarea>
 
-        <label for="skills">Skills (comma separated):</label>
+        <label>Skills (comma-separated):</label>
         <input type="text" name="skills" required>
 
-        <button type="submit">Generate Resume</button>
+        <button type="submit">Generate PDF</button>
     </form>
 </body>
 </html>
@@ -102,25 +100,45 @@ class ResumePDF(FPDF):
         for line in content_list:
             self.multi_cell(0, 10, line)
 
-# Routes
 @app.route('/')
 def index():
     return render_template_string(html_template)
 
 @app.route('/generate', methods=['POST'])
 def generate():
-    # Fetch form data
+    # Form data
     name = request.form['name']
     email = request.form['email']
     phone = request.form['phone']
     address = request.form['address']
     linkedin = request.form['linkedin']
     github = request.form['github']
-    skills = request.form['skills'].split(',')
     summary = request.form['summary']
+    skills = request.form['skills'].split(',')
 
-    # Start PDF generation
+    # Create PDF
     pdf = ResumePDF()
     pdf.title = name
     pdf.add_page()
-    pdf.set_font('_
+    pdf.set_font('Arial', '', 12)
+
+    pdf.cell(0, 10, f"Email: {email}", ln=True)
+    pdf.cell(0, 10, f"Phone: {phone}", ln=True)
+    pdf.cell(0, 10, f"Address: {address}", ln=True)
+    pdf.cell(0, 10, f"LinkedIn: {linkedin}", ln=True)
+    pdf.cell(0, 10, f"GitHub: {github}", ln=True)
+    pdf.ln(5)
+
+    pdf.add_section("Professional Summary", [summary])
+    pdf.add_section("Skills", skills)
+
+    # Write PDF to memory
+    buffer = io.BytesIO()
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    buffer.write(pdf_bytes)
+    buffer.seek(0)
+
+    return send_file(buffer, as_attachment=True, download_name='resume.pdf', mimetype='application/pdf')
+
+if __name__ == '__main__':
+    app.run(debug=True)
